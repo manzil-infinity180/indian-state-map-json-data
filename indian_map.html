@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Indian State and District Map with D3.js</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <button id="reset" style="display:none;">Show Full Map</button>
+    <svg width="800" height="600"></svg>
+
+    <script>
+        // Set up the SVG dimensions
+        const width = 800;
+        const height = 600;
+
+        const svg = d3.select("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const projection = d3.geoMercator()
+            .scale(1000)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        // Load GeoJSON data for Indian states and districts
+        Promise.all([
+            d3.json("indian_state.json"),   // GeoJSON for states
+            d3.json("up_district.json")     // GeoJSON for UP districts
+        ]).then(function([indiaGeojson, upDistrictsGeojson]) {
+            // Draw the full map
+            svg.selectAll("path.state")
+                .data(indiaGeojson.features)
+                .enter().append("path")
+                .attr("class", "state")
+                .attr("d", path)
+                .attr("fill", "steelblue")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", "1")
+                .on("click", function(event, d) {
+                    if (d.properties.name === "Uttar Pradesh") {
+                        showState(d, upDistrictsGeojson);
+                    }
+                });
+
+            function showState(stateData, districtGeojson) {
+                // Center and zoom into the selected state
+                const [[x0, y0], [x1, y1]] = path.bounds(stateData);
+                const scale = 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height);
+                const translate = [(width - scale * (x0 + x1)) / 2, (height - scale * (y0 + y1)) / 2];
+
+                svg.transition()
+                    .duration(750)
+                    .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+
+                // Remove other states and show only the selected state
+                svg.selectAll("path.state").remove();
+
+                svg.append("path")
+                    .datum(stateData)
+                    .attr("d", path)
+                    .attr("fill", "orange")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "1");
+
+                // Draw the districts of the selected state
+                svg.selectAll("path.district")
+                    .data(districtGeojson.features)
+                    .enter().append("path")
+                    .attr("class", "district")
+                    .attr("d", path)
+                    .attr("fill", "lightblue")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "0.5");
+
+                // Show the reset button
+                d3.select("#reset").style("display", "block");
+            }
+
+            // Reset to full map view
+            d3.select("#reset").on("click", function() {
+                svg.selectAll("path").remove();
+                d3.select("#reset").style("display", "none");
+
+                // Redraw the full map
+                svg.selectAll("path.state")
+                    .data(indiaGeojson.features)
+                    .enter().append("path")
+                    .attr("class", "state")
+                    .attr("d", path)
+                    .attr("fill", "steelblue")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "1")
+                    .on("click", function(event, d) {
+                        if (d.properties.name === "Uttar Pradesh") {
+                            showState(d, upDistrictsGeojson);
+                        }
+                    });
+            });
+        });
+
+        // Add zoom functionality
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8])
+            .on("zoom", (event) => {
+                svg.selectAll("path").attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+    </script>
+</body>
+</html>

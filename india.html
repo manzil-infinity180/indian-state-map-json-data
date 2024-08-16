@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Indian State and District Map with D3.js</title>
+    <!-- D3.js CDN -->
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <!-- TopoJSON CDN for handling GeoJSON files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+</head>
+<body>
+    <button id="reset" style="display:none;">Show Full Map</button>
+    <svg width="800" height="600"></svg>
+
+    <script>
+        const width = 800;
+        const height = 600;
+
+        const svg = d3.select("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const projection = d3.geoMercator()
+            .scale(1000)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        // Load GeoJSON data for Indian states
+        d3.json("https://raw.githubusercontent.com/Anujarya300/bubble_maps/master/data/geography-data/india_states.geojson").then(function(indiaGeojson) {
+            // Draw the full map
+            svg.selectAll("path.state")
+                .data(indiaGeojson.features)
+                .enter().append("path")
+                .attr("class", "state")
+                .attr("d", path)
+                .attr("fill", "steelblue")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", "1")
+                .on("click", function(event, state) {
+                    const stateName = state.properties.st_nm; // Adjusted property name
+                    const formattedStateName = stateName.toLowerCase().replace(/\s+/g, '_');
+                    // Load the district GeoJSON for the selected state
+                    const districtGeoJSONUrl = `https://raw.githubusercontent.com/datameet/maps/master/${formattedStateName}/${formattedStateName}.json`;
+                    d3.json(districtGeoJSONUrl).then(function(districtGeojson) {
+                        showState(state, districtGeojson);
+                    });
+                });
+
+            function showState(stateData, districtGeojson) {
+                const [[x0, y0], [x1, y1]] = path.bounds(stateData);
+                const scale = 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height);
+                const translate = [(width - scale * (x0 + x1)) / 2, (height - scale * (y0 + y1)) / 2];
+
+                svg.transition()
+                    .duration(750)
+                    .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+
+                svg.selectAll("path.state").remove();
+
+                svg.append("path")
+                    .datum(stateData)
+                    .attr("d", path)
+                    .attr("fill", "orange")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "1");
+
+                svg.selectAll("path.district")
+                    .data(districtGeojson.features)
+                    .enter().append("path")
+                    .attr("class", "district")
+                    .attr("d", path)
+                    .attr("fill", "lightblue")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "0.5");
+
+                d3.select("#reset").style("display", "block");
+            }
+
+            d3.select("#reset").on("click", function() {
+                svg.selectAll("path").remove();
+                d3.select("#reset").style("display", "none");
+
+                svg.selectAll("path.state")
+                    .data(indiaGeojson.features)
+                    .enter().append("path")
+                    .attr("class", "state")
+                    .attr("d", path)
+                    .attr("fill", "steelblue")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "1")
+                    .on("click", function(event, state) {
+                        const stateName = state.properties.st_nm; // Adjusted property name
+                        const formattedStateName = stateName.toLowerCase().replace(/\s+/g, '_');
+                        const districtGeoJSONUrl = `https://raw.githubusercontent.com/datameet/maps/master/${formattedStateName}/${formattedStateName}.json`;
+                        d3.json(districtGeoJSONUrl).then(function(districtGeojson) {
+                            showState(state, districtGeojson);
+                        });
+                    });
+            });
+        });
+
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8])
+            .on("zoom", (event) => {
+                svg.selectAll("path").attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+    </script>
+</body>
+</html>

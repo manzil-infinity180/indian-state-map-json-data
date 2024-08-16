@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Indian State Map with D3.js</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+    <button id="reset" style="display:none;">Show Full Map</button>
+    <svg width="800" height="600"></svg>
+
+    <script>
+        // Set up the SVG dimensions
+        const width = 800;
+        const height = 600;
+
+        const svg = d3.select("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const projection = d3.geoMercator()
+            .center([78.9629, 23.5937])  // Center of India
+            .scale(1000)  // Scale the map
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        // Load GeoJSON data for Indian states
+        d3.json("indian_state.json").then(function(geojson) {
+            const states = svg.selectAll("path")
+                .data(geojson.features)
+                .enter().append("path")
+                .attr("d", path)
+                .attr("fill", "steelblue")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", "1")
+                .on("click", function(event, d) {
+                    showState(d);
+                });
+        
+
+            function showState(stateData) {
+                // Hide other states
+                svg.selectAll("path").remove();
+
+                // const scale = Math.max(1, Math.min(8, 0.9 / Math.max((x1 - x0) / width, (y1 - y0) / height)));
+                // const translate = [(width - scale * (x0 + x1)) / 2, (height - scale * (y0 + y1)) / 2];
+
+                // svg.transition()
+                //     .duration(750)
+                //     .call(
+                //         zoom.transform,
+                //         d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+                //     );
+
+                // Draw the selected state
+                svg.append("path")
+                    .datum(stateData)
+                    .attr("d", path)
+                    .attr("fill", "orange")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "1");
+                
+            console.log(stateData);
+            // if(stateData.properties.NAME_1 === 'Uttar Pradesh' && stateData.properties.TYPE_1 === 'State'){
+            // d3.json('UttarPradesh.json').then(function(geojson) {
+            //     const district = svg.selectAll("path")
+            //     .data(geojson.features)
+            //     .enter()
+            //     .append('path')
+            //     .attr("d", path)
+            //         .attr("fill", "orange")
+            //         .attr("stroke", "black")
+            //         .attr("stroke-width", "0.25")
+            // });
+            // }else if(stateData.properties.NAME_1 === 'Madhya Pradesh' && stateData.properties.TYPE_1 === 'State') {
+            //     d3.json('MadhyaPradesh.json').then(function(geojson) {
+            //     const district = svg.selectAll("path")
+            //     .data(geojson.features)
+            //     .enter()
+            //     .append('path')
+            //     .attr("d", path)
+            //         .attr("fill", "orange")
+            //         .attr("stroke", "black")
+            //         .attr("stroke-width", "0.25")
+            // });
+            // }
+
+            /* 
+            Available State District Data - UP, MP, TamilNadu, Rajasthan
+            */
+            const x = stateData.properties.NAME_1.split(' ').join('');
+            console.log(x);
+            d3.json(`${x}.json`).then(function(geojson) {
+                const district = svg.selectAll("path")
+                .data(geojson.features)
+                .enter()
+                .append('path')
+                .attr("d", path)
+                    .attr("fill", "orange")
+                    .attr("stroke", "black")
+                    .attr("stroke-width", "0.25")
+            });
+
+            
+
+                // Show the reset button
+                d3.select("#reset").style("display", "block");
+            }
+
+            // Reset to full map view
+            d3.select("#reset").on("click", function() {
+                svg.selectAll("path").remove();
+                d3.select("#reset").style("display", "none");
+
+                // Redraw the full map
+                svg.selectAll("path")
+                    .data(geojson.features)
+                    .enter().append("path")
+                    .attr("d", path)
+                    .attr("fill", "steelblue")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", "1")
+                    .on("click", function(event, d) {
+                        showState(d);
+                    });
+            });
+        });
+    </script>
+</body>
+</html>
